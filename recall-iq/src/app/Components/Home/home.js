@@ -26,38 +26,40 @@ export default function RecallIQHomepage() {
   const phone2FARef = useRef(null);
   const [confirmPassword, setConfirmPassword] = useState("");
   const router = useRouter();
-  // useEffect(() => {
-  //   const token = localStorage.getItem("token");
-  //   if (token) {
-  //     router.push("/Dashboard");
-  //   }
-  //   else {
-  //     const refreshToken = localStorage.getItem("refresh_token");
-  //     console.log(refreshToken);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      router.push("/Dashboard");
+    }
+    else {
+      const refreshToken = localStorage.getItem("refresh_token");
+      console.log(refreshToken);
       
-  //     if (refreshToken) {
-  //       // Optionally, you can verify the refresh token with the server here
-  //       const verifyRefreshToken = async () => {
-  //         try {
-  //           const response = await api.get("/auth/me", {
-  //             token: token,
-  //           });
-  //           console.log(response);
+      if (refreshToken) {
+        // Optionally, you can verify the refresh token with the server here
+        const verifyRefreshToken = async () => {
+          try {
+            const response = await api.post("/auth/refresh", {
+              refresh_token: refreshToken,
+            });
+            console.log(response?.data?.access_token);
+            console.log("token ");
             
-  //           // localStorage.setItem("token", response?.data.data.access_token);
-  //           // localStorage.setItem("refresh_token", response?.data.data.refresh_token);
-  //         }
-  //         catch (error) {
-  //           console.error("Refresh token verification failed:", error);
-  //           localStorage.removeItem("token");
-  //           localStorage.removeItem("refresh_token");
-  //           router.push("/");
-  //         }   
-  //       };
-  //       verifyRefreshToken();
-  //     }
-  //   }
-  // }, []);
+            localStorage.setItem("token", response?.data?.access_token);
+            router.push("/Dashboard");
+            // localStorage.setItem("refresh_token", response?.data.data.refresh_token);
+          }
+          catch (error) {
+            console.error("Refresh token verification failed:", error);
+            localStorage.removeItem("token");
+            localStorage.removeItem("refresh_token");
+            router.push("/");
+          }   
+        };
+        verifyRefreshToken();
+      }
+    }
+  }, []);
   const UserLogin = async (e) => {
     e.preventDefault();
     try {
