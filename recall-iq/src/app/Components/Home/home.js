@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import axios from "axios";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { AuthContext } from "@/context/AuthContext";
 export default function RecallIQHomepage() {
+  const { fetchUser } = useContext(AuthContext);
   const [showLogin, setShowLogin] = useState(false);
   const [forgotStep, setForgotStep] = useState("email");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -33,7 +35,7 @@ export default function RecallIQHomepage() {
     }
     else {
       const refreshToken = localStorage.getItem("refresh_token");
-      console.log(refreshToken);
+      (refreshToken);
       
       if (refreshToken) {
         // Optionally, you can verify the refresh token with the server here
@@ -42,8 +44,8 @@ export default function RecallIQHomepage() {
             const response = await api.post("/auth/refresh", {
               refresh_token: refreshToken,
             });
-            console.log(response?.data?.access_token);
-            console.log("token ");
+            (response?.data?.access_token);
+            ("token ");
             
             localStorage.setItem("token", response?.data?.access_token);
             router.push("/Dashboard");
@@ -67,12 +69,13 @@ export default function RecallIQHomepage() {
         email: email || emailRef?.current?.value,
         password: password || passwordRef?.current?.value,
       };
-      console.log(LoginData);
+      (LoginData);
       const response = await api.post("/auth/login", LoginData);
 
-      console.log(response.data);
+      (response.data);
       localStorage.setItem("token", response?.data.data.access_token);
       localStorage.setItem("refresh_token", response?.data.data.refresh_token);
+      await fetchUser();
       router.push("/Dashboard");
 
     } catch (error) {
@@ -95,17 +98,17 @@ export default function RecallIQHomepage() {
         email_verified: email2FARef?.current?.checked || false,
         phone_verified: phone2FARef?.current?.checked || false,
       };
-      console.log(formData);
+      (formData);
 
       const response = await api.post("/auth/register", formData);
-      console.log(response);
+      (response);
       setSignupStep("onboarding");
       setShowSignup(false);
     } catch (err) {
-      console.log(err);
+      (err);
     }
 
-    // console.log(formData);
+    // (formData);
   };
   return (
     <>

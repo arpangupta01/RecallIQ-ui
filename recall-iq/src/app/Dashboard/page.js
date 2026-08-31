@@ -3,6 +3,8 @@ import { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/navigation";
 import api from "../../lib/api";
 import { AuthContext } from "../../context/AuthContext";
+import Sidebar from "../Components/Sidebar/sidebar";
+import axios from "axios";
 
 export default function RecallIQDashboard() {
   const [activeSection, setActiveSection] = useState("youtube");
@@ -12,6 +14,8 @@ export default function RecallIQDashboard() {
   const [isTranscriptReady, setIsTranscriptReady] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [selectedChatDate, setSelectedChatDate] = useState("today");
+  const [taskname, setTaskname] = useState("");
+  const [summary, setSummary] = useState([]);
   const [processingQuote, setProcessingQuote] = useState(
     "Teaching the AI where the coffee machine is... ☕",
   );
@@ -24,85 +28,42 @@ export default function RecallIQDashboard() {
     "AI is listening very carefully... 👂",
     "Almost there... the neurons are warming up! 🧠",
   ];
+  const [history, setHistory] = useState([]);
+  const [chatResponse, setChatresponse] = useState([{}]);
+  const [usermessage, setUserMessage] = useState("");
+  const [aimessage, setAimessage] = useState("");
 
-  // const transcriptData = [
-  //   {
-  //     text: "नमस्कार स्वागत है आप सभी का मार्केटनामा",
-  //     start: 2.159,
-  //     duration: 7.121,
-  //   },
-  //   {
-  //     text: "में। मैं हूं सुमित और हफ्ते का ये जो",
-  //     start: 5.44,
-  //     duration: 7.119,
-  //   },
-  //   {
-  //     text: "कारोबारी सत्र था तीसरा कारोबारी सत्र",
-  //     start: 9.28,
-  //     duration: 5.6,
-  //   },
-  //   {
-  //     text: "इसकी अगर बात तो एक ठीक-ठाक सा सेशन वो",
-  //     start: 12.559,
-  //     duration: 3.761,
-  //   },
-  //   {
-  //     text: "थोड़ा ऑडियो का इशू आ रहा होगा अब ठीक हो",
-  //     start: 14.88,
-  //     duration: 4.08,
-  //   },
-  //   {
-  //     text: "गया होगा। सो हफ्ते का तीसरा कारोबारी",
-  //     start: 16.32,
-  //     duration: 5.68,
-  //   },
-  //   {
-  //     text: "सत्र और ठीक-ठाक सेशन था। आईटी थोड़ा बहुत",
-  //     start: 18.96,
-  //     duration: 6.319,
-  //   },
-  //   {
-  //     text: "बाइंग साइड पे था और बैंक्स थोड़ा बहुत",
-  //     start: 22.0,
-  //     duration: 5.68,
-  //   },
-  //   {
-  //     text: "प्रेशर साइड पे कामकाज कर रहे थे। एडवांस",
-  //     start: 25.279,
-  //     duration: 4.08,
-  //   },
-  //   {
-  //     text: "डिक्लाइन में डिक्लाइन के फेवर में बाजार",
-  //     start: 27.68,
-  //     duration: 4.16,
-  //   },
-  //   {
-  //     text: "था। एडवांसेस में कुछ खास एक्शन था नहीं।",
-  //     start: 29.359,
-  //     duration: 4.961,
-  //   },
-  //   {
-  //     text: "बाकी छोटा-छोटा स्टॉक स्पेसिफिक स्टोरी",
-  //     start: 31.84,
-  //     duration: 4.16,
-  //   },
-  //   {
-  //     text: "मार्केट में बनते हुए दिखाई पड़ रही है।",
-  //     start: 34.32,
-  //     duration: 4.72,
-  //   },
-  //   {
-  //     text: "आज भी शुगर का दिन था। वही अगेन अब सब तरफ",
-  //     start: 36.0,
-  //     duration: 4.48,
-  //   },
-  //   {
-  //     text: "सुनने को मिल रहा है। इनफैक्ट आज दोस्त का",
-  //     start: 39.04,
-  //     duration: 3.76,
-  //   },
-  // ];
+  const chat_llm = async () => {
+    if (!usermessage.trim()) return;
 
+    setChatresponse((prev) => [
+      ...prev,
+      {
+        usermessage: usermessage,
+        aimessage: null,
+      },
+    ]);
+
+    const response = await api.post("/chatbot", {
+      user_id: user?.id,
+      url_id: youtubeUrl,
+      conversation: usermessage,
+    });
+    const aimess = response.data;
+    // Add AI response to the latest message
+    setChatresponse((prev) => {
+      const updated = [...prev];
+
+      updated[updated.length - 1] = {
+        ...updated[updated.length - 1],
+        aimessage: aimess,
+      };
+
+      return updated;
+    });
+
+    setUserMessage("");
+  };
   const languages = [
     "English",
     "Hindi",
@@ -117,30 +78,6 @@ export default function RecallIQDashboard() {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/");
-    } else {
-      const refreshToken = localStorage.getItem("refresh_token");
-      console.log(refreshToken);
-
-      if (refreshToken) {
-        // Optionally, you can verify the refresh token with the server here
-        const verifyRefreshToken = async () => {
-          try {
-            const response = await api.post("/auth/refresh", {
-              refresh_token: refreshToken,
-            });
-            console.log(response?.data?.access_token);
-
-            // localStorage.setItem("token", response?.data.data.access_token);
-            // localStorage.setItem("refresh_token", response?.data.data.refresh_token);
-          } catch (error) {
-            console.error("Refresh token verification failed:", error);
-            localStorage.removeItem("token");
-            localStorage.removeItem("refresh_token");
-            router.push("/");
-          }
-        };
-        verifyRefreshToken();
-      }
     }
   }, []);
   const handleYoutubeUrlChange = async () => {
@@ -152,34 +89,38 @@ export default function RecallIQDashboard() {
       setProcessingQuote(processingQuotes[quoteIndex]);
     }, 2200);
     try {
+      if (user == null || user.id == null) return;
+      if (taskname == null || taskname == "") return;
       const response = await api.post("api/process_youtube_audio", {
         url: youtubeUrl,
         userId: user?.id || null,
+        taskname: taskname,
       });
-      console.log(response.data);
+      response.data;
       const taskId = response?.data?.jobId;
-      console.log("Task ID:", taskId);
+      ("Task ID:", taskId);
       // setTranscriptData()
       setIsTranscriptReady(true);
-      console.log(response?.data?.transcript?.snippets);
+      response?.data?.transcript?.segments;
+      setSummary(response?.data?.summary);
 
-      setTranscriptData(response?.data?.transcript?.snippets);
+      setTranscriptData(response?.data?.transcript?.segments);
 
       // const socket = new WebSocket(
       //   `ws://127.0.0.1:8000/ws/${response?.data?.jobId}`,
       // );
-      // console.log("WebSocket connection established. ", { socket });
+      // ("WebSocket connection established. ", { socket });
       // socket.onopen = () => {
-      //   console.log("WebSocket connection established.");
+      //   ("WebSocket connection established.");
       //   // You can send messages to the server here if needed
       // };
       // socket.onmessage = (event) => {
       //   const data = JSON.parse(event.data);
-      //   console.log(data);
+      //   (data);
       // };
 
       // socket.onclose = () => {
-      //   console.log("Disconnected");
+      //   ("Disconnected");
       // };
 
       // socket.onerror = (error) => {
@@ -210,29 +151,6 @@ export default function RecallIQDashboard() {
     };
   });
 
-  const sidebarItems = [
-    {
-      id: "youtube",
-      title: "YouTube URL",
-      subtitle: "Analyze videos instantly",
-    },
-    {
-      id: "video",
-      title: "Upload Video",
-      subtitle: "MP4, MKV, MOV",
-    },
-    {
-      id: "audio",
-      title: "Audio Files",
-      subtitle: "MP3, WAV recordings",
-    },
-    {
-      id: "documents",
-      title: "Documents",
-      subtitle: "PDF, DOCX, TXT",
-    },
-  ];
-
   const historyItems = [
     {
       title: "AI System Design Meeting",
@@ -250,6 +168,65 @@ export default function RecallIQDashboard() {
       time: "2 days ago",
     },
   ];
+
+  useEffect(() => {
+    try {
+      const get_history = async () => {
+        if (user?.id == null || user == null) {
+          console.log("user not found");
+          return;
+        }
+        const response = await api.get(`/get-history/${user.id}`);
+        setHistory(response?.data?.data);
+      };
+      get_history();
+    } catch (e) {
+      ("Error is ", e);
+    }
+  }, [user, transcriptData, isTranscriptReady]);
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push("/");
+  };
+
+  const timeAgo = (pastTime) => {
+    const past = new Date(pastTime);
+    const now = new Date();
+
+    const diffInSeconds = Math.floor((now - past) / 1000);
+
+    if (diffInSeconds < 60) {
+      return "just now";
+    }
+
+    const minutes = Math.floor(diffInSeconds / 60);
+
+    if (minutes < 60) {
+      return minutes === 1 ? "1 min ago" : `${minutes} mins ago`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+
+    if (hours < 24) {
+      return hours === 1 ? "1 hr ago" : `${hours} hrs ago`;
+    }
+
+    const days = Math.floor(hours / 24);
+
+    if (days < 30) {
+      return days === 1 ? "1 day ago" : `${days} days ago`;
+    }
+
+    const months = Math.floor(days / 30);
+
+    if (months < 12) {
+      return months === 1 ? "1 month ago" : `${months} months ago`;
+    }
+
+    const years = Math.floor(days / 365);
+
+    return years === 1 ? "1 year ago" : `${years} years ago`;
+  };
 
   return (
     <div className="min-h-screen bg-[#070B14] text-white flex">
@@ -280,32 +257,10 @@ export default function RecallIQDashboard() {
         </div>
 
         {/* Sidebar Menu */}
-        <div className="p-6 space-y-4">
-          <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-4">
-            Workspace
-          </p>
-
-          {sidebarItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              className={`w-full text-left rounded-3xl p-5 transition-all duration-300 border ${
-                activeSection === item.id
-                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-blue-500/30"
-                  : "bg-white/5 border-white/10 hover:bg-white/10"
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600" />
-
-                <div>
-                  <h3 className="font-semibold text-lg">{item.title}</h3>
-                  <p className="text-sm text-gray-400 mt-1">{item.subtitle}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+        <Sidebar
+          setActive={setActiveSection}
+          activeSection={activeSection}
+        ></Sidebar>
 
         {/* History */}
         <div className="flex-1 overflow-y-auto hide-scrollbar px-6 pb-6">
@@ -320,20 +275,20 @@ export default function RecallIQDashboard() {
           </div>
 
           <div className="space-y-4">
-            {historyItems.map((item, idx) => (
+            {history?.map((item, idx) => (
               <div
                 key={idx}
                 className="bg-white/5 border border-white/10 rounded-3xl p-5 hover:bg-white/10 transition cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-3">
                   <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 text-xs border border-blue-500/20">
-                    {item.type}
+                    {item.taskname}
                   </span>
-
-                  <span className="text-xs text-gray-500">{item.time}</span>
                 </div>
 
-                <h3 className="font-medium leading-relaxed">{item.title}</h3>
+                <h3 className="font-medium leading-relaxed">
+                  {timeAgo(item.createdAt)}
+                </h3>
               </div>
             ))}
           </div>
@@ -358,12 +313,30 @@ export default function RecallIQDashboard() {
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button className="px-5 py-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition">
-              Upgrade Plan
-            </button>
+          <div className="flex items-center gap-3">
+            {user && (
+              <>
+                {/* Username */}
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center px-1 text-white text-sm font-medium text-center leading-5">
+                  <span>
+                    {user.first_name?.split(" ")[0]}
+                    <br />
+                    {user.last_name?.split(" ")[0] || ""}
+                  </span>
+                </div>
 
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600" />
+                {/* Logout */}
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2.5 rounded-xl border border-red-500/20 
+                   bg-red-500/10 text-red-400 
+                   hover:bg-red-500/20 hover:text-red-300 
+                   transition-all duration-200"
+                >
+                  Logout
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -412,7 +385,7 @@ export default function RecallIQDashboard() {
               {activeSection === "youtube" && (
                 <div className="space-y-6">
                   {/* YouTube URL */}
-                  <div>
+                  <div className=" flex flex-col gap-4">
                     <label className="block text-sm text-gray-300 mb-3">
                       Paste YouTube URL
                     </label>
@@ -425,10 +398,23 @@ export default function RecallIQDashboard() {
                         placeholder="https://youtube.com/watch?v=..."
                         className="flex-1 min-w-0 bg-black/30 border border-white/10 rounded-2xl px-6 py-5 outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
                       />
-
+                    </div>
+                    <label className="block text-sm text-gray-300 mb-3">
+                      Task name
+                    </label>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <input
+                        value={taskname}
+                        onChange={(e) => setTaskname(e.target.value)}
+                        type="text"
+                        placeholder="Python Summary ..."
+                        className="flex-1 min-w-0 bg-black/30 border border-white/10 rounded-2xl px-6 py-5 outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
+                      />
                       <button
                         onClick={handleYoutubeUrlChange}
-                        disabled={isProcessing || !youtubeUrl.trim()}
+                        disabled={
+                          isProcessing || !taskname.trim() || !youtubeUrl.trim()
+                        }
                         className="w-full md:w-auto px-8 py-5 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 font-semibold hover:scale-[1.02] transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                       >
                         {isProcessing ? "Processing..." : "Analyze Video"}
@@ -491,18 +477,18 @@ export default function RecallIQDashboard() {
                             {/* Timestamp */}
                             <div className="flex-shrink-0 pt-1">
                               <span className="inline-flex px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-mono">
-                                {segment.start.toFixed(2)}s
+                                {segment.start}s
                               </span>
                             </div>
 
                             {/* Transcript */}
                             <div className="min-w-0 flex-1">
                               <p className="text-gray-200 leading-relaxed text-sm sm:text-base">
-                                {segment.text}
+                                {segment.end}
                               </p>
 
                               <p className="text-xs text-gray-500 mt-2">
-                                Duration: {segment.duration.toFixed(2)}s
+                                {segment.text}
                               </p>
                             </div>
                           </div>
@@ -535,11 +521,10 @@ export default function RecallIQDashboard() {
               )}
             </div>
 
-            {/* AI Output */}
             <div className="space-y-8 scroll-auto">
               {/* AI Summary */}
-              <div className="bg-white/5 border border-white/10 rounded-[32px] lg:rounded-[40px] p-5 sm:p-6 lg:p-8 backdrop-blur-xl min-w-0">
-                {/* Fixed header */}
+              {/* <div className="bg-white/5 border border-white/10 rounded-[32px] lg:rounded-[40px] p-5 sm:p-6 lg:p-8 backdrop-blur-xl min-w-0">
+                
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold">AI Summary</h2>
 
@@ -548,7 +533,7 @@ export default function RecallIQDashboard() {
                   </span>
                 </div>
 
-                {/* ONLY CONTENT SCROLLS */}
+                
                 <div className="h-[400px] overflow-y-auto hide-scrollbar pr-1">
                   <div className="space-y-5 text-gray-300 leading-relaxed break-words">
                     <p>
@@ -597,9 +582,134 @@ export default function RecallIQDashboard() {
                     </div>
                   </div>
                 </div>
+              </div>*/}
+              <div className="bg-white/5 border border-white/10 rounded-[32px] lg:rounded-[40px] p-5 sm:p-6 lg:p-8 backdrop-blur-xl min-w-0">
+                {/* Fixed Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold">AI Summary</h2>
+
+                  <span className="px-4 py-2 rounded-full bg-green-500/10 text-green-300 text-sm border border-green-500/20">
+                    Ready
+                  </span>
+                </div>
+
+                {/* Only Content Scrolls */}
+                <div className="h-[400px] overflow-y-auto hide-scrollbar pr-1">
+                  <div className="space-y-6 text-gray-300 leading-relaxed break-words">
+                    {summary.length === 0 && (
+                      <p className="text-gray-500">No summary available yet.</p>
+                    )}
+
+                    {summary.map((summaryItem, summaryIndex) => (
+                      <div
+                        key={summaryItem.title || summaryIndex}
+                        className="space-y-6"
+                      >
+                        {summaryItem.title && (
+                          <div>
+                            <h3 className="text-xl font-semibold text-white mb-3">
+                              Title
+                            </h3>
+                            <p className="text-gray-300">{summaryItem.title}</p>
+                          </div>
+                        )}
+
+                        {summaryItem.overview && (
+                          <div>
+                            <h3 className="text-xl font-semibold text-white mb-3">
+                              Overview
+                            </h3>
+                            <p className="text-gray-300">
+                              {summaryItem.overview}
+                            </p>
+                          </div>
+                        )}
+
+                        {summaryItem.sections?.map((section, sectionIndex) => (
+                          <div
+                            key={section.heading || sectionIndex}
+                            className="bg-black/30 border border-white/10 rounded-3xl p-5"
+                          >
+                            <h3 className="font-semibold text-lg text-white mb-4">
+                              {section.heading}
+                            </h3>
+
+                            {section.points?.length > 0 && (
+                              <ul className="space-y-3 text-sm text-gray-300">
+                                {section.points.map((point, pointIndex) => (
+                                  <li
+                                    key={pointIndex}
+                                    className="flex items-start gap-3"
+                                  >
+                                    <span className="text-blue-400 mt-1">
+                                      •
+                                    </span>
+                                    <span>{point}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+
+                            {section.subsections?.map(
+                              (subsection, subIndex) => (
+                                <div
+                                  key={subsection.heading || subIndex}
+                                  className="mt-5 pt-4 border-t border-white/10"
+                                >
+                                  <h4 className="font-medium text-base text-gray-200 mb-3">
+                                    {subsection.heading}
+                                  </h4>
+
+                                  <ul className="space-y-3 text-sm text-gray-400">
+                                    {subsection.points?.map(
+                                      (point, pointIndex) => (
+                                        <li
+                                          key={pointIndex}
+                                          className="flex items-start gap-3"
+                                        >
+                                          <span className="text-purple-400 mt-1">
+                                            •
+                                          </span>
+                                          <span>{point}</span>
+                                        </li>
+                                      ),
+                                    )}
+                                  </ul>
+                                </div>
+                              ),
+                            )}
+                          </div>
+                        ))}
+
+                        {summaryItem.key_takeaways?.length > 0 && (
+                          <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-3xl p-5">
+                            <h3 className="font-semibold text-lg text-white mb-4">
+                              Key Takeaways
+                            </h3>
+
+                            <ul className="space-y-3 text-sm text-gray-300">
+                              {summaryItem.key_takeaways.map(
+                                (takeaway, index) => (
+                                  <li
+                                    key={index}
+                                    className="flex items-start gap-3"
+                                  >
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center text-xs font-semibold">
+                                      {index + 1}
+                                    </span>
+                                    <span className="pt-0.5">{takeaway}</span>
+                                  </li>
+                                ),
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Chatbot */}
               {/* AI Chatbot */}
               <div className="bg-white/5 border border-white/10 rounded-[32px] lg:rounded-[40px] p-5 sm:p-6 lg:p-8 backdrop-blur-xl min-w-0">
                 {/* Header - fixed */}
@@ -638,49 +748,41 @@ export default function RecallIQDashboard() {
                 </div>
 
                 {/* ONLY CHAT MESSAGES SCROLL */}
-                <div className="h-[280px] overflow-y-auto hide-scrollbar pr-1 sm:pr-2">
-                  <div className="space-y-4">
-                    <div className="bg-black/30 rounded-3xl p-5 border border-white/5">
-                      <p className="text-sm text-gray-400 mb-2">User</p>
+                {console.log(chatResponse)}
+                { chatResponse.length >1 &&  chatResponse?.map((value, index) => {
+                  return (
+                    <div key={index} className="h-[280px] overflow-y-auto hide-scrollbar pr-1 sm:pr-2">
+                      <div className="space-y-4">
+                        <div className="bg-black/30 rounded-3xl p-5 border border-white/5">
+                          <p className="text-sm text-gray-400 mb-2">User</p>
 
-                      <p>What are the main action items discussed?</p>
+                          <p>{value.usermessage}</p>
+                        </div>
+
+                        <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl p-5 border border-blue-500/20">
+                          <p className="text-sm text-blue-300 mb-2">RecallIQ</p>
+
+                          <p className="text-sm text-gray-200 leading-relaxed">
+                            {value.aimessage}
+                          </p>
+                        </div>
+
+                        
+                      </div>
                     </div>
-
-                    <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl p-5 border border-blue-500/20">
-                      <p className="text-sm text-blue-300 mb-2">RecallIQ</p>
-
-                      <p className="text-sm text-gray-200 leading-relaxed">
-                        The meeting emphasized scalable RAG pipelines, reusable
-                        embeddings and asynchronous transcription workflows.
-                      </p>
-                    </div>
-
-                    <div className="bg-black/30 rounded-3xl p-5 border border-white/5">
-                      <p className="text-sm text-gray-400 mb-2">User</p>
-
-                      <p>How can we improve the transcription pipeline?</p>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl p-5 border border-blue-500/20">
-                      <p className="text-sm text-blue-300 mb-2">RecallIQ</p>
-
-                      <p className="text-sm text-gray-200 leading-relaxed">
-                        Use asynchronous processing, cache completed transcripts
-                        and reuse embeddings for repeated queries.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })}
 
                 {/* Input - fixed */}
                 <div className="flex gap-2 sm:gap-3 mt-6">
-                  <input
+                  <input onChange={(e)=>setUserMessage(e.target.value)}
+                    value={usermessage}
                     type="text"
                     placeholder="Ask anything about your content..."
                     className="min-w-0 flex-1 bg-black/30 border border-white/10 rounded-2xl px-4 sm:px-5 py-4 outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
                   />
 
-                  <button className="flex-shrink-0 px-5 sm:px-6 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 font-semibold hover:scale-[1.02] transition">
+                  <button onClick={chat_llm} className="flex-shrink-0 px-5 sm:px-6 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 font-semibold hover:scale-[1.02] transition">
                     Send
                   </button>
                 </div>

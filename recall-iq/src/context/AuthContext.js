@@ -16,20 +16,21 @@ export const AuthProvider = ({ children }) => {
         // ensure code runs only in browser
         if (typeof window === "undefined") return;
         const token = localStorage.getItem("token");
-        console.log("token check for auth in use effect", token);
+        ("token check for auth in use effect", token);
 
         if (token) {
             fetchUser();
         } else {
-            
+            setInitialized(true);
+            setLoading(false);
         }
     }, []);
     const fetchUser = async () => {
         const token = localStorage.getItem("token");
-        console.log("token for auth.me", token);
+        ("token for auth.me", token);
 
         if (!token) {
-            console.log("not token set loading false ");
+            ("not token set loading false ");
             setInitialized(true);
 
             setLoading(false);
@@ -40,15 +41,17 @@ export const AuthProvider = ({ children }) => {
             
             const res = await api.get("/auth/me");
             const data = res.data;
-            console.log(" print data for auth/me", data);
-            setUser(data?.user);
+            (" print data for auth/me", data);
+            setUser(data?.user ?? data);
             
             // router.push("/Dashboard");
         } catch (err) {
-            console.log("Error in auth/me", err);
+            ("Error in auth/me", err);
             setUser(null);
+        } finally {
+            setInitialized(true);
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
