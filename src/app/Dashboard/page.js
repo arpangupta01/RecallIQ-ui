@@ -29,11 +29,14 @@ export default function RecallIQDashboard() {
     "Almost there... the neurons are warming up! 🧠",
   ];
   const [history, setHistory] = useState([]);
-  const [chatResponse, setChatresponse] = useState([{}]);
+  const [selectedUrlId, setSelectedUrlId] = useState("");
+  const [chatResponse, setChatresponse] = useState([]);
   const [usermessage, setUserMessage] = useState("");
   const [aimessage, setAimessage] = useState("");
 
-  const chat_llm = async () => {
+  const chat_llm = async (event) => {
+    event?.preventDefault();
+
     if (!usermessage.trim()) return;
 
     setChatresponse((prev) => [
@@ -44,23 +47,41 @@ export default function RecallIQDashboard() {
       },
     ]);
 
-    const response = await api.post("/chatbot", {
-      user_id: user?.id,
-      url_id: youtubeUrl,
-      conversation: usermessage,
-    });
-    const aimess = response.data;
-    // Add AI response to the latest message
-    setChatresponse((prev) => {
-      const updated = [...prev];
+    try {
+      const response = await api.post("/chatbot", {
+        user_id: user?.id,
+        url_id: selectedUrlId || youtubeUrl,
+        conversation: usermessage,
+      });
+      const message = response.data?.message;
+      const assistantMessage = Array.isArray(message)
+        ? message
+            .filter((item) => item.type === "text")
+            .map((item) => item.text)
+            .join("\n")
+        : message;
 
-      updated[updated.length - 1] = {
-        ...updated[updated.length - 1],
-        aimessage: aimess,
-      };
+      // Add AI response to the latest message
+      setChatresponse((prev) => {
+        const updated = [...prev];
 
-      return updated;
-    });
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          aimessage: assistantMessage || "No response received.",
+        };
+
+        return updated;
+      });
+    } catch (error) {
+      setChatresponse((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          aimessage: "Sorry, I couldn't get a response right now.",
+        };
+        return updated;
+      });
+    }
 
     setUserMessage("");
   };
@@ -91,6 +112,7 @@ export default function RecallIQDashboard() {
     try {
       if (user == null || user.id == null) return;
       if (taskname == null || taskname == "") return;
+      setSelectedUrlId(youtubeUrl);
       const response = await api.post("api/process_youtube_audio", {
         url: youtubeUrl,
         userId: user?.id || null,
@@ -151,23 +173,17 @@ export default function RecallIQDashboard() {
     };
   });
 
-  const historyItems = [
-    {
-      title: "AI System Design Meeting",
-      type: "YouTube",
-      time: "2 hours ago",
-    },
-    {
-      title: "Quarterly Planning Recording",
-      type: "Audio",
-      time: "Yesterday",
-    },
-    {
-      title: "Research Paper Summary",
-      type: "PDF",
-      time: "2 days ago",
-    },
-  ];
+  const handleHistorySelect = (item) => {
+    const sourceId = item.url_id ?? item.youtubeUrl ?? item.url ?? "";
+    const transcript = item.transcript?.segments ?? item.transcript ?? [];
+    const itemSummary = item.summary ?? [];
+
+    setSelectedUrlId(sourceId);
+    setTranscriptData(Array.isArray(transcript) ? transcript : []);
+    setSummary(Array.isArray(itemSummary) ? itemSummary : [itemSummary]);
+    setIsTranscriptReady(transcript.length > 0);
+    setChatresponse([]);
+  };
 
   useEffect(() => {
     try {
@@ -183,7 +199,7 @@ export default function RecallIQDashboard() {
     } catch (e) {
       ("Error is ", e);
     }
-  }, [user, transcriptData, isTranscriptReady]);
+  }, [user]);
   const handleLogout = () => {
     localStorage.clear();
     router.push("/");
@@ -278,6 +294,7 @@ export default function RecallIQDashboard() {
             {history?.map((item, idx) => (
               <div
                 key={idx}
+                onClick={() => handleHistorySelect(item)}
                 className="bg-white/5 border border-white/10 rounded-3xl p-5 hover:bg-white/10 transition cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-3">
@@ -748,33 +765,36 @@ export default function RecallIQDashboard() {
                 </div>
 
                 {/* ONLY CHAT MESSAGES SCROLL */}
-                {console.log(chatResponse)}
-                { chatResponse.length >1 &&  chatResponse?.map((value, index) => {
-                  return (
-                    <div key={index} className="h-[280px] overflow-y-auto hide-scrollbar pr-1 sm:pr-2">
-                      <div className="space-y-4">
-                        <div className="bg-black/30 rounded-3xl p-5 border border-white/5">
-                          <p className="text-sm text-gray-400 mb-2">User</p>
+                <div className="h-[280px] overflow-y-auto hide-scrollbar pr-1 sm:pr-2">
+                  <div className="space-y-4">
+                    {chatResponse.map((value, index) => (
+                      <div key={index}>
+                        <div className="space-y-4">
+                          <div className="bg-black/30 rounded-3xl p-5 border border-white/5">
+                            <p className="text-sm text-gray-400 mb-2">
+                              User
+                            </p>
 
-                          <p>{value.usermessage}</p>
+                            <p>{value.usermessage}</p>
+                          </div>
+
+                          <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl p-5 border border-blue-500/20">
+                            <p className="text-sm text-blue-300 mb-2">
+                              RecallIQ
+                            </p>
+
+                            <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap break-words">
+                              {value.aimessage || "Thinking..."}
+                            </p>
+                          </div>
                         </div>
-
-                        <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl p-5 border border-blue-500/20">
-                          <p className="text-sm text-blue-300 mb-2">RecallIQ</p>
-
-                          <p className="text-sm text-gray-200 leading-relaxed">
-                            {value.aimessage}
-                          </p>
-                        </div>
-
-                        
                       </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                </div>
 
                 {/* Input - fixed */}
-                <div className="flex gap-2 sm:gap-3 mt-6">
+                <form onSubmit={chat_llm} className="flex gap-2 sm:gap-3 mt-6">
                   <input onChange={(e)=>setUserMessage(e.target.value)}
                     value={usermessage}
                     type="text"
@@ -782,10 +802,10 @@ export default function RecallIQDashboard() {
                     className="min-w-0 flex-1 bg-black/30 border border-white/10 rounded-2xl px-4 sm:px-5 py-4 outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
                   />
 
-                  <button onClick={chat_llm} className="flex-shrink-0 px-5 sm:px-6 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 font-semibold hover:scale-[1.02] transition">
+                  <button type="submit" className="flex-shrink-0 px-5 sm:px-6 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 font-semibold hover:scale-[1.02] transition">
                     Send
                   </button>
-                </div>
+                </form>
               </div>
             </div>
           </div>

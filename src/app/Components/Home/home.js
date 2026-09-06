@@ -14,6 +14,7 @@ export default function RecallIQHomepage() {
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [signupStep, setSignupStep] = useState("signup");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 
   const [email, setEmail] = useState("");
   const [firstname, setFirstname] = useState("");
@@ -28,15 +29,22 @@ export default function RecallIQHomepage() {
   const phone2FARef = useRef(null);
   const [confirmPassword, setConfirmPassword] = useState("");
   const router = useRouter();
+  const handleOtpChange = (value, index) => {
+  // Allow only one digit
+  if (!/^\d?$/.test(value)) return;
+
+  const newOtp = [...otp];
+  newOtp[index] = value;
+  setOtp(newOtp);
+};
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       router.push("/Dashboard");
-    }
-    else {
+    } else {
       const refreshToken = localStorage.getItem("refresh_token");
-      (refreshToken);
-      
+      refreshToken;
+
       if (refreshToken) {
         // Optionally, you can verify the refresh token with the server here
         const verifyRefreshToken = async () => {
@@ -44,19 +52,18 @@ export default function RecallIQHomepage() {
             const response = await api.post("/auth/refresh", {
               refresh_token: refreshToken,
             });
-            (response?.data?.access_token);
+            response?.data?.access_token;
             ("token ");
-            
+
             localStorage.setItem("token", response?.data?.access_token);
             router.push("/Dashboard");
             // localStorage.setItem("refresh_token", response?.data.data.refresh_token);
-          }
-          catch (error) {
+          } catch (error) {
             console.error("Refresh token verification failed:", error);
             localStorage.removeItem("token");
             localStorage.removeItem("refresh_token");
             router.push("/");
-          }   
+          }
         };
         verifyRefreshToken();
       }
@@ -69,15 +76,14 @@ export default function RecallIQHomepage() {
         email: email || emailRef?.current?.value,
         password: password || passwordRef?.current?.value,
       };
-      (LoginData);
+      LoginData;
       const response = await api.post("/auth/login", LoginData);
 
-      (response.data);
+      response.data;
       localStorage.setItem("token", response?.data.data.access_token);
       localStorage.setItem("refresh_token", response?.data.data.refresh_token);
       await fetchUser();
       router.push("/Dashboard");
-
     } catch (error) {
       console.error("Login failed:", error);
     }
@@ -98,18 +104,47 @@ export default function RecallIQHomepage() {
         email_verified: email2FARef?.current?.checked || false,
         phone_verified: phone2FARef?.current?.checked || false,
       };
-      (formData);
+      formData;
 
       const response = await api.post("/auth/register", formData);
-      (response);
+      response;
       setSignupStep("onboarding");
       setShowSignup(false);
     } catch (err) {
-      (err);
+      err;
     }
 
     // (formData);
   };
+
+  const send_otp = async () => {
+    try {
+      const response = await api.post("/send-otp", {
+        email: email,
+      });
+
+      const data = response.data;
+      console.log("OTP sent successfully:", data);
+      if(data.status){
+        setForgotStep("otp");
+      }
+    } catch (err) {
+      console.error("Failed to send OTP:", err);
+    }
+  };
+  const verify_otp = async () => {
+    try {
+      const response = await api.post("/verify-otp", {
+        email: email,
+        otp: otp.join(""),
+      });
+      console.log("OTP verified successfully:", response.data);
+
+    }
+    catch (err) {
+      console.error("Failed to verify OTP:", err);
+    }
+  }
   return (
     <>
       <style jsx global>{`
@@ -433,7 +468,7 @@ export default function RecallIQHomepage() {
                     </p>
                   </div>
 
-                  <button className="w-full flex items-center justify-center gap-3 bg-white text-black rounded-2xl py-4 font-medium hover:scale-[1.02] transition mb-6">
+                  {/* <button className="w-full flex items-center justify-center gap-3 bg-white text-black rounded-2xl py-4 font-medium hover:scale-[1.02] transition mb-6">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="20"
@@ -458,14 +493,14 @@ export default function RecallIQHomepage() {
                       />
                     </svg>
                     Continue with Google
-                  </button>
+                  </button> */}
 
-                  <div className="relative flex items-center justify-center mb-6">
+                  {/* <div className="relative flex items-center justify-center mb-6">
                     <div className="absolute w-full border-t border-white/10" />
                     <span className="relative px-4 bg-[#111827] text-sm text-gray-500">
                       OR SIGN UP WITH EMAIL
                     </span>
-                  </div>
+                  </div> */}
 
                   <form className="space-y-5">
                     <div>
@@ -785,7 +820,7 @@ export default function RecallIQHomepage() {
                   </div>
 
                   <button
-                    onClick={() => setForgotStep("otp")}
+                    onClick={send_otp}
                     className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 font-semibold text-lg hover:scale-[1.02] transition shadow-lg shadow-blue-500/20"
                   >
                     Send OTP
@@ -808,11 +843,13 @@ export default function RecallIQHomepage() {
                     </label>
 
                     <div className="grid grid-cols-6 gap-3">
-                      {[1, 2, 3, 4, 5, 6].map((item) => (
+                      {[1, 2, 3, 4, 5, 6].map((item,index) => (
                         <input
                           key={item}
                           type="text"
                           maxLength={1}
+                          value={otp[index]}
+                          onChange={(e) => handleOtpChange(e.target.value, index)}
                           className="w-full aspect-square bg-black/30 border border-white/10 rounded-2xl text-center text-xl outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       ))}
@@ -820,7 +857,7 @@ export default function RecallIQHomepage() {
                   </div>
 
                   <button
-                    onClick={() => setForgotStep("newPassword")}
+                    onClick={verify_otp}
                     className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 font-semibold text-lg hover:scale-[1.02] transition shadow-lg shadow-blue-500/20"
                   >
                     Verify OTP
